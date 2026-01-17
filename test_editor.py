@@ -83,6 +83,5 @@ def test_help():
 
 
 if __name__ == '__main__':
-    os.chdir('/home/runner/work/pe2/pe2')
     test_help()
     test_basic_operations()

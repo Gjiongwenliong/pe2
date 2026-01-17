@@ -87,11 +87,19 @@ class LineEditor:
         if start is None or end is None:
             return None, None
         
+        # Handle empty buffer
+        if len(self.lines) == 0:
+            return None, None
+        
+        # Validate start <= end
+        if start > end:
+            return None, None
+        
         return start, end
     
     def print_lines(self, start, end, show_numbers=False):
         """Print lines in the specified range."""
-        if start < 1 or end > len(self.lines):
+        if start < 1 or end > len(self.lines) or start > end:
             print("Invalid line range")
             return
         
