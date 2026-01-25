@@ -62,55 +62,94 @@ from datetime import datetime
 from typing import List, Dict
 
 # class VoucherEntry:
-#     """借貸傳票輸入系統"""
+#     """單行文字輸入系統"""
     
 class LineBuffer:
     def __init__(self):
         self.lines = []
 
     def add_line(self, text):
-        self.lines.append(text)    
+        """將文字加入緩衝區"""
+        self.lines.append(text)
+        print(f"[DEBUG] 已加入: {repr(text)}, 目前共 {len(self.lines)} 行")
 
     def save(self, filename="voucher.txt"):
+        """儲存所有行到檔案"""
         with open(filename, "w", encoding="utf-8") as f:
             for line in self.lines:
-                f.write(line + "\n")
+                f.write(line)  # 因為 add_line 時已加入 \n,這裡不再重複加
+        print(f"[DEBUG] 已儲存 {len(self.lines)} 行到 {filename}")
 
 class InputLayer:
     def __init__(self, buffer):
         self.buffer = buffer
 
     def enter_Line(self):
+        """文字輸入模式 - 持續輸入直到遇到命令"""
         print("=== 文字輸入端 ===")
-        self.text = input("字串輸入並選擇儲存: :save 或退出: :exit >")
-        self.buffer.add_line(self.text)
+        print("(輸入文字後按 Enter,輸入 :save 儲存,:exit 退出)")
+        
+        while True:
+            self.text = input("> ")
+            
+            # 如果輸入是命令,則返回命令給 main 處理
+            if self.text.startswith(":"):
+                return self.text
+            
+            # 將輸入的文字加上換行符號並添加到 buffer
+            self.buffer.add_line(self.text + "\n")
 
 class CommandLayer:
     def __init__(self, buffer):
         self.buffer = buffer
 
     def run_command(self, cmd):
+        """執行命令"""
         if cmd == ":save":
+            # 確保最後一個字元是換行符號 (ASCII code 10 = '\n')
+            if self.buffer.lines and not self.buffer.lines[-1].endswith("\n"):
+                self.buffer.lines[-1] += "\n"
+            
             self.buffer.save()
-            print("已儲存傳票")
+            print("✓ 已儲存文字到 voucher.txt")
+            return True
         elif cmd == ":exit":
             print("退出程式")
-            sys.exit(0)
+            return False
         else:
-            print("未知指令")
+            print(f"未知指令: {cmd}")
+            return True
 
 def main():
     buffer = LineBuffer()
     input_layer = InputLayer(buffer)
     command_layer = CommandLayer(buffer)
 
+    print("=== 文字輸入系統 ===")
+    print("模式:")
+    print("  i = 輸入模式 (可連續輸入多行,輸入 :save 或 :exit 返回)")
+    print("  c = 命令模式 (直接執行命令)")
+    print("  q = 退出程式")
+    
     while True:
-        mode = input("選擇模式 (i=輸入, c=命令): ")
+        mode = input("\n選擇模式 (i=輸入, c=命令, q=退出): ").strip().lower()
+        
         if mode == "i":
-            input_layer.enter_Line()
+            # 進入輸入模式,可能返回命令
+            cmd = input_layer.enter_Line()
+            if cmd:  # 如果返回了命令
+                if not command_layer.run_command(cmd):
+                    break
         elif mode == "c":
-            cmd = input("命令列: ")
-            command_layer.run_command(cmd)
+            # 命令模式
+            cmd = input("命令 (:save/:exit): ").strip()
+            if not command_layer.run_command(cmd):
+                break
+        elif mode == "q":
+            print("退出程式")
+            break
+        else:
+            print("無效的模式選擇")
 
 if __name__ == "__main__":
     main()
