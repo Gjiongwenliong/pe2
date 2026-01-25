@@ -83,10 +83,8 @@ class InputLayer:
 
     def enter_voucher(self):
         print("=== 文字輸入端 ===")
-        debit = input("借方科目: ")
-        credit = input("貸方科目: ")
-        amount = input("金額: ")
-        self.buffer.add_line(f"{debit} -> {credit} : {amount}")
+        self.text = input("字串輸入並選擇儲存: :save 或退出: :exit >")
+        self.buffer.add_line(self.text)
 
 class CommandLayer:
     def __init__(self, buffer):
@@ -117,14 +115,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
 
 
 #     def run(self, stdscr):
