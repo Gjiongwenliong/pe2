@@ -1,6 +1,6 @@
 import sys
 
-# class VoucherBuffer:
+# class LineBuffer:
 #     def __init__(self):
 #         self.lines = []
 
@@ -16,11 +16,10 @@ import sys
 #     def __init__(self, buffer):
 #         self.buffer = buffer
 
-#     def enter_voucher(self):
+#     def enter_Line(self):
 #         print("=== 文字輸入端 ===")
-#         debit = input("借方科目: ")
+#         self.text = input("字串輸入並選擇儲存: :save 或退出: :exit >")
 #         credit = input("貸方科目: ")
-#         amount = input("金額: ")
 #         self.buffer.add_line(f"{debit} -> {credit} : {amount}")
 
 # class CommandLayer:
@@ -38,14 +37,14 @@ import sys
 #             print("未知指令")
 
 # def main():
-#     buffer = VoucherBuffer()
+#     buffer = LineBuffer()
 #     input_layer = InputLayer(buffer)
 #     command_layer = CommandLayer(buffer)
 
 #     while True:
 #         mode = input("選擇模式 (i=輸入, c=命令): ")
 #         if mode == "i":
-#             input_layer.enter_voucher()
+#             input_layer.enter_Line()
 #         elif mode == "c":
 #             cmd = input("命令列: ")
 #             command_layer.run_command(cmd)
@@ -65,7 +64,7 @@ from typing import List, Dict
 # class VoucherEntry:
 #     """借貸傳票輸入系統"""
     
-class VoucherBuffer:
+class LineBuffer:
     def __init__(self):
         self.lines = []
 
@@ -81,7 +80,7 @@ class InputLayer:
     def __init__(self, buffer):
         self.buffer = buffer
 
-    def enter_voucher(self):
+    def enter_Line(self):
         print("=== 文字輸入端 ===")
         self.text = input("字串輸入並選擇儲存: :save 或退出: :exit >")
         self.buffer.add_line(self.text)
@@ -101,14 +100,14 @@ class CommandLayer:
             print("未知指令")
 
 def main():
-    buffer = VoucherBuffer()
+    buffer = LineBuffer()
     input_layer = InputLayer(buffer)
     command_layer = CommandLayer(buffer)
 
     while True:
         mode = input("選擇模式 (i=輸入, c=命令): ")
         if mode == "i":
-            input_layer.enter_voucher()
+            input_layer.enter_Line()
         elif mode == "c":
             cmd = input("命令列: ")
             command_layer.run_command(cmd)
