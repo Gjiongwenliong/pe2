@@ -9,8 +9,45 @@ Functions:
                   handles user input for navigation and mode switching, and manages the main event loop.
 Usage:
     Run the script in a terminal. Use arrow keys to move the cursor, 'i' to activate insert mode,
-    'ESC' to exit insert mode, 's' to save, and 'q' to quit the editor.
+    'ESC' to exit insert mode, 's' to save, and 'q' to quit the editor, and 'n' to set the filename, and 
+    'f' to find a string.
 """
+
+def find_string_in_content(editor_content, search_term, start_line=0, start_col=0):
+    """
+    在編輯器內容中搜尋字串,返回所有匹配的位置
+    
+    Args:
+        editor_content: 編輯器內容列表
+        search_term: 要搜尋的字串
+        start_line: 開始搜尋的行號
+        start_col: 開始搜尋的列號
+    
+    Returns:
+        list: 包含 (line, col) 元組的列表,表示所有匹配位置
+    """
+    results = []
+    
+    for line_idx in range(len(editor_content)):
+        line = editor_content[line_idx]
+        col_idx = 0
+        
+        # 如果是起始行,從指定列開始搜尋
+        if line_idx == start_line:
+            col_idx = start_col
+        
+        while col_idx < len(line):
+            pos = line.find(search_term, col_idx)
+            if pos == -1:
+                break
+            
+            # 只記錄在起始位置之後的結果
+            if line_idx > start_line or (line_idx == start_line and pos >= start_col):
+                results.append((line_idx, pos))
+            
+            col_idx = pos + 1
+    
+    return results
 
 def main(stdscr):
     # 初始化 curses 設定
@@ -43,13 +80,24 @@ def main(stdscr):
     insert_mode = False
     filename = "untitled.txt"
     
+    # 搜尋相關狀態
+    search_results = []
+    current_search_index = 0
+    last_search_term = ""
+    
     # 主迴圈
     while True:
         # 更新編輯區顯示
         editor_win.clear()
         editor_win.box()
         mode_indicator = "[INSERT]" if insert_mode else "[NORMAL]"
-        editor_win.addstr(0, 2, f" Editor - {filename} {mode_indicator} | Line: {cursor_y + 1}, Col: {cursor_x + 1} ")
+        
+        # 如果有搜尋結果,在標題列顯示
+        search_info = ""
+        if search_results:
+            search_info = f" | Found: {current_search_index + 1}/{len(search_results)}"
+        
+        editor_win.addstr(0, 2, f" Editor - {filename} {mode_indicator} | Line: {cursor_y + 1}, Col: {cursor_x + 1}{search_info} ")
         
         # 顯示編輯內容,游標所在行使用反白
         for idx, line in enumerate(editor_content):
@@ -95,7 +143,7 @@ def main(stdscr):
         if insert_mode:
             command_win.addstr(1, 1, "ESC: Normal mode | Type to edit")
         else:
-            command_win.addstr(1, 1, "i: Insert | s: Save | q: Quit | n: Name | Arrow keys: Move")
+            command_win.addstr(1, 1, "i: Insert | s: Save | q: Quit | n: Name | f: Find | Arrow keys: Move")
         command_win.refresh()
         
         # 取得使用者輸入
@@ -108,6 +156,38 @@ def main(stdscr):
                 break
             elif key == ord('i') or key == ord('I'):
                 insert_mode = True
+            elif key == ord('f') or key == ord('F'):
+                # 搜尋功能
+                curses.echo()
+                command_win.addstr(1, 1, "Find: ".ljust(width-3))
+                command_win.refresh()
+                search_term = command_win.getstr(1, 7, 60).decode('utf-8')
+                curses.noecho()
+                
+                if search_term:
+                    # 執行搜尋
+                    last_search_term = search_term
+                    search_results = find_string_in_content(editor_content, search_term)
+                    
+                    if search_results:
+                        current_search_index = 0
+                        # 移動游標到第一個搜尋結果
+                        cursor_y, cursor_x = search_results[0]
+                        command_win.addstr(1, 1, f"Found {len(search_results)} match(es). Press 'n' for next.".ljust(width-3))
+                    else:
+                        search_results = []
+                        command_win.addstr(1, 1, f"Pattern not found: {search_term}".ljust(width-3))
+                    
+                    command_win.refresh()
+                    curses.napms(1500)
+            elif key == ord('n') and search_results:
+                # 移動到下一個搜尋結果
+                current_search_index = (current_search_index + 1) % len(search_results)
+                cursor_y, cursor_x = search_results[current_search_index]
+            elif key == ord('N') and search_results:
+                # 移動到上一個搜尋結果
+                current_search_index = (current_search_index - 1) % len(search_results)
+                cursor_y, cursor_x = search_results[current_search_index]
             elif key == ord('n') or key == ord('N'):
                 # 輸入檔名
                 curses.echo()
