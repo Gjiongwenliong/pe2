@@ -1,442 +1,187 @@
-import sys
-
-# class LineBuffer:
-#     def __init__(self):
-#         self.lines = []
-
-#     def add_line(self, text):
-#         self.lines.append(text)
-
-#     def save(self, filename="voucher.txt"):
-#         with open(filename, "w", encoding="utf-8") as f:
-#             for line in self.lines:
-#                 f.write(line + "\n")
-
-# class InputLayer:
-#     def __init__(self, buffer):
-#         self.buffer = buffer
-
-#     def enter_Line(self):
-#         print("=== 文字輸入端 ===")
-#         self.text = input("字串輸入並選擇儲存: :save 或退出: :exit >")
-#         credit = input("貸方科目: ")
-#         self.buffer.add_line(f"{debit} -> {credit} : {amount}")
-
-# class CommandLayer:
-#     def __init__(self, buffer):
-#         self.buffer = buffer
-
-#     def run_command(self, cmd):
-#         if cmd == ":save":
-#             self.buffer.save()
-#             print("已儲存傳票")
-#         elif cmd == ":exit":
-#             print("退出程式")
-#             sys.exit(0)
-#         else:
-#             print("未知指令")
-
-# def main():
-#     buffer = LineBuffer()
-#     input_layer = InputLayer(buffer)
-#     command_layer = CommandLayer(buffer)
-
-#     while True:
-#         mode = input("選擇模式 (i=輸入, c=命令): ")
-#         if mode == "i":
-#             input_layer.enter_Line()
-#         elif mode == "c":
-#             cmd = input("命令列: ")
-#             command_layer.run_command(cmd)
-
-# if __name__ == "__main__":
-#     main()
-    
-
-# 使用 curses 建立一個整頁式借貸傳票輸入畫面
-
-
 import curses
-import json
-from datetime import datetime
-from typing import List, Dict
+"""
+A simple terminal-based text editor using the curses library.
+This script creates a split terminal interface with an editor area and a command area.
+- The editor area allows for basic text editing and cursor movement.
+- The command area displays instructions and status messages.
+Functions:
+    main(stdscr): Initializes the curses environment, sets up the editor and command windows,
+                  handles user input for navigation and mode switching, and manages the main event loop.
+Usage:
+    Run the script in a terminal. Use arrow keys to move the cursor, 'i' to activate insert mode,
+    'ESC' to exit insert mode, 's' to save, and 'q' to quit the editor.
+"""
 
-# class VoucherEntry:
-#     """單行文字輸入系統"""
+def main(stdscr):
+    # 初始化 curses 設定
+    curses.curs_set(1)  # 顯示游標
+    stdscr.clear()
+    stdscr.keypad(True)  # 啟用特殊按鍵
     
-class LineBuffer:
-    def __init__(self):
-        self.lines = []
-
-    def add_line(self, text):
-        """將文字加入緩衝區"""
-        self.lines.append(text)
-        print(f"[DEBUG] 已加入: {repr(text)}, 目前共 {len(self.lines)} 行")
-
-    def save(self, filename="voucher.txt"):
-        """儲存所有行到檔案"""
-        with open(filename, "w", encoding="utf-8") as f:
-            for line in self.lines:
-                f.write(line)  # 因為 add_line 時已加入 \n,這裡不再重複加
-        print(f"[DEBUG] 已儲存 {len(self.lines)} 行到 {filename}")
-
-class InputLayer:
-    def __init__(self, buffer):
-        self.buffer = buffer
-
-    def enter_Line(self):
-        """文字輸入模式 - 持續輸入直到遇到命令"""
-        print("=== 文字輸入端 ===")
-        print("(輸入文字後按 Enter,輸入 :save 儲存,:exit 退出)")
-        
-        while True:
-            self.text = input("> ")
-            
-            # 如果輸入是命令,則返回命令給 main 處理
-            if self.text.startswith(":"):
-                return self.text
-            
-            # 將輸入的文字加上換行符號並添加到 buffer
-            self.buffer.add_line(self.text + "\n")
-
-class CommandLayer:
-    def __init__(self, buffer):
-        self.buffer = buffer
-
-    def run_command(self, cmd):
-        """執行命令"""
-        if cmd == ":save":
-            # 確保最後一個字元是換行符號 (ASCII code 10 = '\n')
-            if self.buffer.lines and not self.buffer.lines[-1].endswith("\n"):
-                self.buffer.lines[-1] += "\n"
-            
-            self.buffer.save()
-            print("✓ 已儲存文字到 voucher.txt")
-            return True
-        elif cmd == ":exit":
-            print("退出程式")
-            return False
-        else:
-            print(f"未知指令: {cmd}")
-            return True
-
-def main():
-    buffer = LineBuffer()
-    input_layer = InputLayer(buffer)
-    command_layer = CommandLayer(buffer)
-
-    print("=== 文字輸入系統 ===")
-    print("模式:")
-    print("  i = 輸入模式 (可連續輸入多行,輸入 :save 或 :exit 返回)")
-    print("  c = 命令模式 (直接執行命令)")
-    print("  q = 退出程式")
+    # 初始化顏色配對
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)  # 反白效果 (整行)
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)  # 游標字元底線效果
     
+    # 取得終端機大小
+    height, width = stdscr.getmaxyx()
+
+    # 計算編輯區和命令區的大小
+    editor_height = height - 3  # 預留 3 行給命令區
+    command_height = 3
+    
+    # 建立編輯區視窗
+    editor_win = curses.newwin(editor_height, width, 0, 0)
+    editor_win.keypad(True)
+    
+    # 建立命令區視窗
+    command_win = curses.newwin(command_height, width, editor_height, 0)
+    
+    # 初始化編輯器狀態
+    editor_content = [""]
+    cursor_x = 0
+    cursor_y = 0
+    insert_mode = False
+    filename = "untitled.txt"
+    
+    # 主迴圈
     while True:
-        mode = input("\n選擇模式 (i=輸入, c=命令, q=退出): ").strip().lower()
+        # 更新編輯區顯示
+        editor_win.clear()
+        editor_win.box()
+        mode_indicator = "[INSERT]" if insert_mode else "[NORMAL]"
+        editor_win.addstr(0, 2, f" Editor - {filename} {mode_indicator} | Line: {cursor_y + 1}, Col: {cursor_x + 1} ")
         
-        if mode == "i":
-            # 進入輸入模式,可能返回命令
-            cmd = input_layer.enter_Line()
-            if cmd:  # 如果返回了命令
-                if not command_layer.run_command(cmd):
-                    break
-        elif mode == "c":
-            # 命令模式
-            cmd = input("命令 (:save/:exit): ").strip()
-            if not command_layer.run_command(cmd):
-                break
-        elif mode == "q":
-            print("退出程式")
-            break
+        # 顯示編輯內容,游標所在行使用反白
+        for idx, line in enumerate(editor_content):
+            if idx < editor_height - 2:
+                display_line = line[:width-3]
+                
+                # 如果是游標所在行,使用反白顯示並在游標位置加底線
+                if idx == cursor_y:
+                    # 顯示游標前的文字
+                    if cursor_x > 0:
+                        editor_win.addstr(idx + 1, 1, display_line[:cursor_x], curses.color_pair(1))
+                    
+                    # 顯示游標位置的字元 (加上底線)
+                    if cursor_x < len(display_line):
+                        cursor_char = display_line[cursor_x]
+                        editor_win.addstr(idx + 1, 1 + cursor_x, cursor_char, 
+                                        curses.color_pair(1) | curses.A_UNDERLINE)
+                    else:
+                        # 如果游標在行尾,顯示空格加底線
+                        editor_win.addstr(idx + 1, 1 + cursor_x, " ", 
+                                        curses.color_pair(1) | curses.A_UNDERLINE)
+                    
+                    # 顯示游標後的文字
+                    if cursor_x + 1 < len(display_line):
+                        editor_win.addstr(idx + 1, 2 + cursor_x, display_line[cursor_x + 1:], curses.color_pair(1))
+                    
+                    # 填充剩餘空間使整行反白
+                    remaining = width - 3 - len(display_line)
+                    if remaining > 0:
+                        editor_win.addstr(idx + 1, 1 + len(display_line), " " * remaining, curses.color_pair(1))
+                else:
+                    editor_win.addstr(idx + 1, 1, display_line)
+        
+        # 設定游標位置 (確保不超出範圍)
+        cursor_x = min(cursor_x, len(editor_content[cursor_y]))
+        editor_win.move(cursor_y + 1, cursor_x + 1)
+        editor_win.refresh()
+        
+        # 更新命令區顯示
+        command_win.clear()
+        command_win.box()
+        command_win.addstr(0, 2, " Commands ")
+        if insert_mode:
+            command_win.addstr(1, 1, "ESC: Normal mode | Type to edit")
         else:
-            print("無效的模式選擇")
+            command_win.addstr(1, 1, "i: Insert | s: Save | q: Quit | n: Name | Arrow keys: Move")
+        command_win.refresh()
+        
+        # 取得使用者輸入
+        key = editor_win.getch()
+        
+        # 處理按鍵
+        if not insert_mode:
+            # Normal mode
+            if key == ord('q') or key == ord('Q'):
+                break
+            elif key == ord('i') or key == ord('I'):
+                insert_mode = True
+            elif key == ord('n') or key == ord('N'):
+                # 輸入檔名
+                curses.echo()
+                command_win.addstr(1, 1, "Enter filename: ".ljust(width-3))
+                command_win.refresh()
+                filename = command_win.getstr(1, 17, 60).decode('utf-8')
+                filename = filename + ".txt" if not filename.endswith(".txt") else filename     
+                curses.noecho()
+            elif key == ord('s') or key == ord('S'):
+                # 儲存檔案
+                try:
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(editor_content))
+                    command_win.addstr(1, 1, f"Saved to {filename}!".ljust(width-3))
+                    command_win.refresh()
+                    curses.napms(1000)  # 顯示 1 秒
+                except Exception as e:
+                    command_win.addstr(1, 1, f"Error: {str(e)}"[:width-3])
+                    command_win.refresh()
+                    curses.napms(2000)
+            elif key == curses.KEY_UP and cursor_y > 0:
+                cursor_y -= 1
+                cursor_x = min(cursor_x, len(editor_content[cursor_y]))
+            elif key == curses.KEY_DOWN and cursor_y < len(editor_content) - 1:
+                cursor_y += 1
+                cursor_x = min(cursor_x, len(editor_content[cursor_y]))
+            elif key == curses.KEY_LEFT and cursor_x > 0:
+                cursor_x -= 1
+            elif key == curses.KEY_RIGHT and cursor_x < len(editor_content[cursor_y]):
+                cursor_x += 1
+        else:
+            # Insert mode
+            if key == 27:  # ESC 鍵
+                insert_mode = False
+            elif key == curses.KEY_BACKSPACE or key == 127 or key == 8:
+                # 刪除字元
+                if cursor_x > 0:
+                    line = editor_content[cursor_y]
+                    editor_content[cursor_y] = line[:cursor_x-1] + line[cursor_x:]
+                    cursor_x -= 1
+                elif cursor_y > 0:
+                    # 合併到上一行
+                    cursor_x = len(editor_content[cursor_y - 1])
+                    editor_content[cursor_y - 1] += editor_content[cursor_y]
+                    editor_content.pop(cursor_y)
+                    cursor_y -= 1
+            elif key == curses.KEY_ENTER or key == 10 or key == 13:
+                # 換行
+                line = editor_content[cursor_y]
+                editor_content[cursor_y] = line[:cursor_x]
+                editor_content.insert(cursor_y + 1, line[cursor_x:])
+                cursor_y += 1
+                cursor_x = 0
+            elif key == curses.KEY_UP and cursor_y > 0:
+                cursor_y -= 1
+                cursor_x = min(cursor_x, len(editor_content[cursor_y]))
+            elif key == curses.KEY_DOWN and cursor_y < len(editor_content) - 1:
+                cursor_y += 1
+                cursor_x = min(cursor_x, len(editor_content[cursor_y]))
+            elif key == curses.KEY_LEFT and cursor_x > 0:
+                cursor_x -= 1
+            elif key == curses.KEY_RIGHT and cursor_x < len(editor_content[cursor_y]):
+                cursor_x += 1
+            elif 32 <= key <= 126:  # 可列印字元
+                char = chr(key)
+                line = editor_content[cursor_y]
+                editor_content[cursor_y] = line[:cursor_x] + char + line[cursor_x:]
+                cursor_x += 1
 
 if __name__ == "__main__":
-    main()
-
-
-#     def run(self, stdscr):
-
-#         """主執行函數"""
-#         curses.curs_set(1)  # 顯示游標
-#         stdscr.clear()
-        
-#         # 定義顏色配對
-#         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)    # 標題
-#         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)    # 輸入欄位
-#         curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # 標籤
-#         curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   # 明細表頭
-        
-#         while True:
-#             self.draw_screen(stdscr)
-            
-#             key = stdscr.getch()
-            
-#             if key == curses.KEY_F1:
-#                 break
-#             elif key == curses.KEY_UP:
-#                 self.move_up()
-#             elif key == curses.KEY_DOWN or key == ord('\t'):
-#                 self.move_down()
-#             elif key == curses.KEY_LEFT:
-#                 self.move_left()
-#             elif key == curses.KEY_RIGHT:
-#                 self.move_right()
-#             elif key == curses.KEY_F2:
-#                 self.add_entry()
-#             elif key == curses.KEY_F3:
-#                 self.delete_entry()
-#             elif key == curses.KEY_F10:
-#                 self.save_voucher(stdscr)
-#             elif key in (curses.KEY_BACKSPACE, 127, 8):
-#                 self.handle_backspace()
-#             elif 32 <= key <= 126:  # 可列印字元
-#                 self.handle_input(chr(key))
-    
-#     def move_up(self):
-#         """上移欄位"""
-#         if self.current_field >= 3:  # 在明細區
-#             if self.current_entry > 0:
-#                 self.current_entry -= 1
-#             else:
-#                 self.current_field = 2  # 回到摘要欄
-#         else:
-#             self.current_field = max(0, self.current_field - 1)
-    
-#     def move_down(self):
-#         """下移欄位"""
-#         if self.current_field < 3:
-#             if self.entries:  # 如果有明細資料
-#                 self.current_field = 3
-#                 self.current_entry = 0
-#             else:
-#                 self.current_field = min(2, self.current_field + 1)
-#         else:  # 在明細區
-#             if self.current_entry < len(self.entries) - 1:
-#                 self.current_entry += 1
-    
-#     def move_left(self):
-#         """左移欄位 (僅在明細區)"""
-#         if self.current_field >= 3:
-#             self.current_col = max(0, self.current_col - 1)
-    
-#     def move_right(self):
-#         """右移欄位 (僅在明細區)"""
-#         if self.current_field >= 3:
-#             self.current_col = min(4, self.current_col + 1)
-                
-#     def draw_screen(self, stdscr):
-#         """繪製整個畫面"""
-#         height, width = stdscr.getmaxyx()
-#         stdscr.clear()
-        
-#         # 繪製標題
-#         title = "借貸傳票輸入系統"
-#         stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
-#         stdscr.addstr(0, (width - len(title)) // 2, title)
-#         stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
-        
-#         # 繪製輸入欄位區域
-#         self.draw_header_fields(stdscr, 2)
-        
-#         # 繪製明細表格
-#         self.draw_entries_table(stdscr, 10)
-        
-#         # 繪製功能鍵說明
-#         self.draw_footer(stdscr, height - 2)
-        
-#         # 繪製總計
-#         self.draw_totals(stdscr, height - 4)
-        
-#         stdscr.refresh()
-        
-#     def draw_header_fields(self, stdscr, start_row):
-#         """繪製表頭輸入欄位"""
-#         fields = [
-#             ("傳票號碼:", self.voucher_no, 0),
-#             ("傳票日期:", self.voucher_date, 1),
-#             ("摘要說明:", self.description, 2)
-#         ]
-        
-#         for i, (label, value, field_idx) in enumerate(fields):
-#             row = start_row + i * 2
-            
-#             # 繪製標籤
-#             stdscr.attron(curses.color_pair(3))
-#             stdscr.addstr(row, 2, label)
-#             stdscr.attroff(curses.color_pair(3))
-            
-#             # 繪製輸入欄位
-#             field_width = 60
-#             if self.current_field == field_idx:
-#                 stdscr.attron(curses.color_pair(2))
-#             stdscr.addstr(row, 15, value.ljust(field_width))
-#             if self.current_field == field_idx:
-#                 stdscr.attroff(curses.color_pair(2))
-                
-#     def draw_entries_table(self, stdscr, start_row):
-#         """繪製明細表格"""
-#         # 表頭
-#         headers = ["項次", "科目代碼", "科目名稱", "借方金額", "貸方金額", "說明"]
-#         col_widths = [6, 12, 20, 15, 15, 25]
-        
-#         stdscr.attron(curses.color_pair(4) | curses.A_BOLD)
-#         col_pos = 2
-#         for header, width in zip(headers, col_widths):
-#             stdscr.addstr(start_row, col_pos, header.ljust(width))
-#             col_pos += width + 1
-#         stdscr.attroff(curses.color_pair(4) | curses.A_BOLD)
-        
-#         # 分隔線
-#         stdscr.addstr(start_row + 1, 2, "─" * 95)
-        
-#         # 明細資料
-#         for i, entry in enumerate(self.entries[:10]):  # 最多顯示10筆
-#             row = start_row + 2 + i
-#             col_pos = 2
-            
-#             values = [
-#                 str(i + 1),
-#                 entry.get('account_code', ''),
-#                 entry.get('account_name', ''),
-#                 entry.get('debit', ''),
-#                 entry.get('credit', ''),
-#                 entry.get('note', '')
-#             ]
-            
-#             # 繪製每個欄位
-#             for col_idx, (value, width) in enumerate(zip(values, col_widths)):
-#                 is_current = (self.current_field >= 3 and 
-#                              self.current_entry == i and 
-#                              self.current_col == col_idx - 1)  # -1 因為項次不可編輯
-                
-#                 if is_current:
-#                     stdscr.attron(curses.color_pair(2))
-#                 elif self.current_field >= 3 and self.current_entry == i:
-#                     stdscr.attron(curses.A_DIM)
-                    
-#                 stdscr.addstr(row, col_pos, str(value).ljust(width))
-                
-#                 if is_current:
-#                     stdscr.attroff(curses.color_pair(2))
-#                 elif self.current_field >= 3 and self.current_entry == i:
-#                     stdscr.attroff(curses.A_DIM)
-                    
-#                 col_pos += width + 1
-            
-#     def draw_totals(self, stdscr, row):
-#         """繪製借貸總計"""
-#         total_debit = sum(float(e.get('debit', '0') or '0') for e in self.entries)
-#         total_credit = sum(float(e.get('credit', '0') or '0') for e in self.entries)
-#         balance = total_debit - total_credit
-        
-#         stdscr.attron(curses.color_pair(3) | curses.A_BOLD)
-#         stdscr.addstr(row, 2, f"借方合計: {total_debit:>15,.2f}  ")
-#         stdscr.addstr(row, 40, f"貸方合計: {total_credit:>15,.2f}  ")
-#         stdscr.addstr(row, 78, f"差額: {balance:>12,.2f}")
-#         stdscr.attroff(curses.color_pair(3) | curses.A_BOLD)
-        
-#     def draw_footer(self, stdscr, row):
-#         """繪製功能鍵說明"""
-#         footer = "F2:新增明細 F3:刪除明細 F10:儲存 ↑↓←→:移動欄位 F1:離開"
-#         stdscr.attron(curses.color_pair(1))
-#         stdscr.addstr(row, 2, footer)
-#         stdscr.attroff(curses.color_pair(1))
-        
-#     def handle_input(self, char):
-#         """處理文字輸入"""
-#         if self.current_field == 0:
-#             self.voucher_no += char
-#         elif self.current_field == 1:
-#             self.voucher_date += char
-#         elif self.current_field == 2:
-#             self.description += char
-#         elif self.current_field >= 3 and self.current_entry < len(self.entries):
-#             # 在明細區輸入
-#             entry = self.entries[self.current_entry]
-#             col_keys = ['account_code', 'account_name', 'debit', 'credit', 'note']
-#             if self.current_col < len(col_keys):
-#                 entry[col_keys[self.current_col]] = entry.get(col_keys[self.current_col], '') + char
-            
-#     def handle_backspace(self):
-#         """處理退格鍵"""
-#         if self.current_field == 0 and self.voucher_no:
-#             self.voucher_no = self.voucher_no[:-1]
-#         elif self.current_field == 1 and self.voucher_date:
-#             self.voucher_date = self.voucher_date[:-1]
-#         elif self.current_field == 2 and self.description:
-#             self.description = self.description[:-1]
-#         elif self.current_field >= 3 and self.current_entry < len(self.entries):
-#             # 在明細區刪除
-#             entry = self.entries[self.current_entry]
-#             col_keys = ['account_code', 'account_name', 'debit', 'credit', 'note']
-#             if self.current_col < len(col_keys):
-#                 key = col_keys[self.current_col]
-#                 if entry.get(key):
-#                     entry[key] = entry[key][:-1]
-            
-#     def add_entry(self):
-#         """新增明細"""
-#         self.entries.append({
-#             'account_code': '',
-#             'account_name': '',
-#             'debit': '',
-#             'credit': '',
-#             'note': ''
-#         })
-#         self.current_entry = len(self.entries) - 1
-#         self.current_field = 3
-#         self.current_col = 0
-        
-#     def delete_entry(self):
-#         """刪除明細"""
-#         if self.entries and self.current_entry < len(self.entries):
-#             self.entries.pop(self.current_entry)
-#             if self.current_entry > 0:
-#                 self.current_entry -= 1
-#             if not self.entries:
-#                 self.current_field = 2  # 回到摘要欄
-                
-#     def save_voucher(self, stdscr):
-#         """儲存傳票到 JSON 檔案"""
-#         voucher_data = {
-#             'voucher_no': self.voucher_no,
-#             'voucher_date': self.voucher_date,
-#             'description': self.description,
-#             'entries': self.entries,
-#             'created_at': datetime.now().isoformat()
-#         }
-        
-#         try:
-#             # 讀取現有資料
-#             try:
-#                 with open('vouchers.json', 'r', encoding='utf-8') as f:
-#                     all_vouchers = json.load(f)
-#             except FileNotFoundError:
-#                 all_vouchers = []
-            
-#             # 加入新傳票
-#             all_vouchers.append(voucher_data)
-            
-#             # 寫入檔案
-#             with open('vouchers.json', 'w', encoding='utf-8') as f:
-#                 json.dump(all_vouchers, f, ensure_ascii=False, indent=2)
-            
-#             msg = f"傳票 {self.voucher_no} 已儲存！按任意鍵繼續..."
-            
-#         except Exception as e:
-#             msg = f"儲存失敗: {str(e)} 按任意鍵繼續..."
-        
-#         height, width = stdscr.getmaxyx()
-#         stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
-#         stdscr.addstr(height // 2, (width - len(msg)) // 2, msg)
-#         stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
-#         stdscr.getch()
-
-# def main():
-#     """主程式進入點"""
-#     app = VoucherEntry()
-#     curses.wrapper(app.run)
-
-# if __name__ == "__main__":
-#     main()
+    print("程式開始執行...")
+    try:
+        curses.wrapper(main)
+    except Exception as e:
+        print(f"發生錯誤: {e}")
+    finally:
+        print("程式結束")
