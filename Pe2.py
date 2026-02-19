@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import curses
 """
 A simple terminal-based text editor using the curses library.
@@ -35,6 +36,19 @@ def find_string_in_content(editor_content, search_term, start_line=0, start_col=
         # 如果是起始行,從指定列開始搜尋
         if line_idx == start_line:
             col_idx = start_col
+=======
+import sys
+import curses
+import json
+
+
+#     def run(self, stdscr):
+
+#         """主執行函數"""
+#         curses.curs_set(1)  # 顯示游標
+#         stdscr.clear()
+        
+>>>>>>> master
         
         while col_idx < len(line):
             pos = line.find(search_term, col_idx)
@@ -66,6 +80,7 @@ def main(stdscr):
     editor_height = height - 3  # 預留 3 行給命令區
     command_height = 3
     
+<<<<<<< HEAD
     # 建立編輯區視窗
     editor_win = curses.newwin(editor_height, width, 0, 0)
     editor_win.keypad(True)
@@ -91,6 +106,34 @@ def main(stdscr):
         editor_win.clear()
         editor_win.box()
         mode_indicator = "[INSERT]" if insert_mode else "[NORMAL]"
+=======
+#     def move_right(self):
+#         """右移欄位 (僅在明細區)"""
+#         if self.current_field >= 3:
+#             self.current_col = min(4, self.current_col + 1)
+                
+#     def draw_screen(self, stdscr):
+#         """繪製整個畫面"""
+#         height, width = stdscr.getmaxyx()
+#         stdscr.clear()
+        
+#         # 繪製標題
+#         stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
+#         stdscr.addstr(0, (width - len(title)) // 2, title)
+#         stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
+        
+#         # 繪製輸入欄位區域
+#         self.draw_header_fields(stdscr, 2)
+        
+#         # 繪製明細表格
+#         self.draw_entries_table(stdscr, 10)
+        
+#         # 繪製功能鍵說明
+#         self.draw_footer(stdscr, height - 2)
+        
+#         # 繪製總計
+#         self.draw_totals(stdscr, height - 4)
+>>>>>>> master
         
         # 如果有搜尋結果,在標題列顯示
         search_info = ""
