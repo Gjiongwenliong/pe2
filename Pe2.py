@@ -1,130 +1,6 @@
 import sys
-
-# class VoucherBuffer:
-#     def __init__(self):
-#         self.lines = []
-
-#     def add_line(self, text):
-#         self.lines.append(text)
-
-#     def save(self, filename="voucher.txt"):
-#         with open(filename, "w", encoding="utf-8") as f:
-#             for line in self.lines:
-#                 f.write(line + "\n")
-
-# class InputLayer:
-#     def __init__(self, buffer):
-#         self.buffer = buffer
-
-#     def enter_voucher(self):
-#         print("=== 文字輸入端 ===")
-#         debit = input("借方科目: ")
-#         credit = input("貸方科目: ")
-#         amount = input("金額: ")
-#         self.buffer.add_line(f"{debit} -> {credit} : {amount}")
-
-# class CommandLayer:
-#     def __init__(self, buffer):
-#         self.buffer = buffer
-
-#     def run_command(self, cmd):
-#         if cmd == ":save":
-#             self.buffer.save()
-#             print("已儲存傳票")
-#         elif cmd == ":exit":
-#             print("退出程式")
-#             sys.exit(0)
-#         else:
-#             print("未知指令")
-
-# def main():
-#     buffer = VoucherBuffer()
-#     input_layer = InputLayer(buffer)
-#     command_layer = CommandLayer(buffer)
-
-#     while True:
-#         mode = input("選擇模式 (i=輸入, c=命令): ")
-#         if mode == "i":
-#             input_layer.enter_voucher()
-#         elif mode == "c":
-#             cmd = input("命令列: ")
-#             command_layer.run_command(cmd)
-
-# if __name__ == "__main__":
-#     main()
-    
-
-# 使用 curses 建立一個整頁式借貸傳票輸入畫面
-
-
 import curses
 import json
-from datetime import datetime
-from typing import List, Dict
-
-# class VoucherEntry:
-#     """借貸傳票輸入系統"""
-    
-class VoucherBuffer:
-    def __init__(self):
-        self.lines = []
-
-    def add_line(self, text):
-        self.lines.append(text)    
-
-    def save(self, filename="voucher.txt"):
-        with open(filename, "w", encoding="utf-8") as f:
-            for line in self.lines:
-                f.write(line + "\n")
-
-class InputLayer:
-    def __init__(self, buffer):
-        self.buffer = buffer
-
-    def enter_voucher(self):
-        print("=== 文字輸入端 ===")
-        debit = input("借方科目: ")
-        credit = input("貸方科目: ")
-        amount = input("金額: ")
-        self.buffer.add_line(f"{debit} -> {credit} : {amount}")
-
-class CommandLayer:
-    def __init__(self, buffer):
-        self.buffer = buffer
-
-    def run_command(self, cmd):
-        if cmd == ":save":
-            self.buffer.save()
-            print("已儲存傳票")
-        elif cmd == ":exit":
-            print("退出程式")
-            sys.exit(0)
-        else:
-            print("未知指令")
-
-def main():
-    buffer = VoucherBuffer()
-    input_layer = InputLayer(buffer)
-    command_layer = CommandLayer(buffer)
-
-    while True:
-        mode = input("選擇模式 (i=輸入, c=命令): ")
-        if mode == "i":
-            input_layer.enter_voucher()
-        elif mode == "c":
-            cmd = input("命令列: ")
-            command_layer.run_command(cmd)
-
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-
-
-
 
 
 #     def run(self, stdscr):
@@ -133,11 +9,6 @@ if __name__ == "__main__":
 #         curses.curs_set(1)  # 顯示游標
 #         stdscr.clear()
         
-#         # 定義顏色配對
-#         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)    # 標題
-#         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)    # 輸入欄位
-#         curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # 標籤
-#         curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)   # 明細表頭
         
 #         while True:
 #             self.draw_screen(stdscr)
@@ -203,7 +74,6 @@ if __name__ == "__main__":
 #         stdscr.clear()
         
 #         # 繪製標題
-#         title = "借貸傳票輸入系統"
 #         stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
 #         stdscr.addstr(0, (width - len(title)) // 2, title)
 #         stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
